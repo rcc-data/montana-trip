@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Vancouver → Yellowstone · May 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    --cream: #F5F0E8;
+    --deep: #1C1A15;
+    --ochre: #C4872A;
+    --rust: #A94B2B;
+    --sage: #5C7A5E;
+    --stone: #8C8070;
+    --light-stone: #D4CFC4;
+    --warm-white: #FAF7F2;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--cream); color: var(--deep);
+    font-family: 'DM Sans', sans-serif; font-weight: 300;
+    overflow-x: hidden; -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100svh; background: var(--deep);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+    padding: 80px 24px 100px; text-align: center;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 80%, rgba(196,135,42,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 20%, rgba(92,122,94,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse 100% 50% at 50% 100%, rgba(169,75,43,0.10) 0%, transparent 50%);
+  }
+  .mountains {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 200px; opacity: 0.12;
+  }
+  .hero-content { position: relative; z-index: 2; animation: fadeUp 1s ease forwards; }
+  .hero-eyebrow {
+    font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+    color: var(--ochre); margin-bottom: 20px; font-weight: 500; display: block;
+  }
+  .hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(50px, 14vw, 88px);
+    font-weight: 400; color: var(--warm-white); line-height: 1.0; margin-bottom: 6px;
+  }
+  .hero-title em { font-style: italic; color: var(--ochre); }
+  .hero-subtitle {
+    font-family: 'Playfair Display', serif; font-style: italic;
+    font-size: clamp(16px, 4.5vw, 26px); color: var(--light-stone);
+    opacity: 0.75; margin-bottom: 36px;
+  }
+  .hero-meta {
+    display: flex; justify-content: center;
+    border: 1px solid rgba(255,255,255,0.1); width: fit-content; margin: 0 auto;
+  }
+  .hero-meta-item {
+    padding: 12px 18px; text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+  .hero-meta-item:last-child { border-right: none; }
+  .hero-meta-label {
+    font-size: 8px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--stone); display: block; margin-bottom: 3px;
+  }
+  .hero-meta-value {
+    font-family: 'Playfair Display', serif; font-size: 15px; color: var(--light-stone);
+  }
+  .scroll-hint {
+    position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    color: var(--stone); font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .scroll-arrow { width: 1px; height: 28px; background: linear-gradient(to bottom, var(--stone), transparent); }
+
+  /* ── NAV ── */
+  .day-nav {
+    position: sticky; top: 0; z-index: 100; background: var(--deep);
+    display: flex; overflow-x: auto; scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .day-nav::-webkit-scrollbar { display: none; }
+  .day-nav-item {
+    flex-shrink: 0; padding: 15px 18px;
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--stone); cursor: pointer; white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .day-nav-item.active { color: var(--ochre); border-bottom-color: var(--ochre); }
+
+  /* ── DAY SECTION ── */
+  .day-section { scroll-margin-top: 46px; }
+  .day-hero {
+    background: var(--deep); padding: 28px 20px 22px;
+    position: relative; overflow: hidden;
+  }
+  .day-hero-bg {
+    position: absolute; inset: 0; opacity: 0.05;
+    background: repeating-linear-gradient(45deg, var(--ochre) 0px, var(--ochre) 1px, transparent 1px, transparent 12px);
+  }
+  .day-number-badge { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .day-num-box {
+    width: 34px; height: 34px; border: 1px solid var(--ochre);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif; font-size: 17px; color: var(--ochre);
+  }
+  .day-date-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--stone); }
+  .day-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(19px, 5.5vw, 26px);
+    font-weight: 400; color: var(--warm-white); line-height: 1.25; margin-bottom: 10px;
+  }
+  .day-narrative { font-size: 13px; line-height: 1.7; color: var(--stone); margin-bottom: 14px; }
+  .day-drive-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(196,135,42,0.12); border: 1px solid rgba(196,135,42,0.25);
+    color: var(--ochre); font-size: 10px; letter-spacing: 1.5px;
+    text-transform: uppercase; padding: 5px 12px;
+  }
+
+  /* ── MAP ── */
+  .map-container { position: relative; width: 100%; }
+  .leaflet-map { width: 100%; height: 300px; display: block; }
+  .map-open-btn {
+    position: absolute; bottom: 12px; right: 12px;
+    background: var(--deep); color: var(--ochre);
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 9px 14px; border: 1px solid var(--ochre);
+    text-decoration: none; display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 999;
+  }
+
+  /* ── STOPS ── */
+  .stops-section { padding: 20px 16px 8px; background: var(--cream); }
+  .stops-label {
+    font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--stone); margin-bottom: 12px; padding-left: 2px;
+  }
+  .stop-card {
+    background: var(--warm-white); border: 1px solid var(--light-stone);
+    padding: 15px 16px; margin-bottom: 10px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .stop-icon { font-size: 19px; flex-shrink: 0; margin-top: 1px; line-height: 1; }
+  .stop-body { flex: 1; min-width: 0; }
+  .stop-type {
+    font-size: 8px; letter-spacing: 2.5px; text-transform: uppercase;
+    margin-bottom: 4px; font-weight: 500;
+  }
+  .stop-type.viewpoint { color: var(--sage); }
+  .stop-type.coffee    { color: var(--ochre); }
+  .stop-type.food      { color: var(--rust); }
+  .stop-type.activity  { color: #7a6a50; }
+  .stop-type.stay      { color: var(--deep); }
+  .stop-type.transport { color: var(--sage); }
+  .stop-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px; font-weight: 400; color: var(--deep); line-height: 1.2; margin-bottom: 2px;
+  }
+  .stop-location { font-size: 11px; color: var(--light-stone); margin-bottom: 8px; }
+  .stop-note {
+    font-size: 12px; line-height: 1.65; color: var(--stone);
+    border-top: 1px solid var(--light-stone); padding-top: 8px;
+  }
+  .stop-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .stop-tag {
+    font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 3px 8px; border: 1px solid var(--light-stone); color: var(--stone);
+  }
+  .stop-tag.hl { background: var(--ochre); border-color: var(--ochre); color: var(--deep); }
+
+  .day-divider { height: 5px; background: var(--ochre); opacity: 0.18; }
+
+  /* ── LINKS ── */
+  .links-section { background: var(--deep); padding: 44px 20px; text-align: center; }
+  .links-eyebrow { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--ochre); margin-bottom: 10px; display: block; }
+  .links-title { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--warm-white); margin-bottom: 8px; }
+  .links-sub { font-size: 13px; color: var(--stone); line-height: 1.6; margin-bottom: 28px; }
+  .link-btns { display: flex; flex-direction: column; gap: 10px; }
+  .link-btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 16px; font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; text-decoration: none;
+    font-family: 'DM Sans', sans-serif; font-weight: 400;
+  }
+  .link-btn.primary { background: var(--ochre); color: var(--deep); border: 1px solid var(--ochre); }
+  .link-btn.secondary { background: transparent; color: var(--light-stone); border: 1px solid rgba(255,255,255,0.15); }
+
+  /* ── TIPS ── */
+  .tips-section { padding: 40px 16px; background: var(--cream); }
+  .tips-header { text-align: center; margin-bottom: 24px; }
+  .tips-eyebrow { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--ochre); display: block; margin-bottom: 10px; }
+  .tips-title { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 400; color: var(--deep); }
+  .tip-card {
+    background: var(--warm-white); border: 1px solid var(--light-stone);
+    padding: 16px; margin-bottom: 10px; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .tip-icon { font-size: 20px; flex-shrink: 0; }
+  .tip-body h4 { font-family: 'Playfair Display', serif; font-size: 15px; margin-bottom: 4px; color: var(--deep); }
+  .tip-body p { font-size: 12px; line-height: 1.65; color: var(--stone); }
+
+  /* ── FOOTER ── */
+  footer { background: var(--deep); padding: 32px 20px 40px; text-align: center; }
+  .footer-title { font-family: 'Playfair Display', serif; font-style: italic; font-size: 20px; color: var(--ochre); margin-bottom: 6px; }
+  .footer-sub { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--stone); }
+
+  /* ── LEAFLET OVERRIDES ── */
+  .leaflet-container { background: #1a1a14 !important; }
+  .leaflet-popup-content-wrapper {
+    background: var(--deep); color: var(--warm-white);
+    border: 1px solid var(--ochre); border-radius: 0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  }
+  .leaflet-popup-tip { background: var(--deep); }
+  .leaflet-popup-content { margin: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 12px; line-height: 1.5; }
+  .leaflet-popup-content b { color: var(--ochre); font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 400; display: block; margin-bottom: 2px; }
+  .leaflet-control-zoom a { background: var(--deep) !important; color: var(--ochre) !important; border-color: rgba(196,135,42,0.3) !important; }
+  .leaflet-control-attribution { background: rgba(28,26,21,0.8) !important; color: var(--stone) !important; font-size: 9px !important; }
+  .leaflet-control-attribution a { color: var(--stone) !important; }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes pulse { 0%,100% { opacity:0.4; } 50% { opacity:0.9; } }
+
+  @media (min-width: 768px) {
+    .leaflet-map { height: 400px; }
+    .day-hero { padding: 40px 40px 28px; }
+    .stops-section { padding: 28px 40px 12px; }
+    .stop-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stop-cards .stop-card { margin-bottom: 0; }
+    .links-section { padding: 64px 40px; }
+    .link-btns { flex-direction: row; justify-content: center; }
+    .link-btn { min-width: 200px; }
+    .tips-section { padding: 64px 40px; max-width: 820px; margin: 0 auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <svg class="mountains" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <polygon points="0,200 120,50 260,110 380,20 500,90 620,35 740,80 800,15 800,200" fill="white"/>
+    <polygon points="0,200 80,90 200,140 340,70 460,130 580,55 700,100 800,45 800,200" fill="white" opacity="0.4"/>
+  </svg>
+  <div class="hero-content">
+    <span class="hero-eyebrow">Ryan & Niamh · May 2026</span>
+    <h1 class="hero-title">Vancouver<br>to <em>Yellowstone</em></h1>
+    <p class="hero-subtitle">A Road Trip Through the American West</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item"><span class="hero-meta-label">Depart</span><span class="hero-meta-value">Fri 15 May</span></div>
+      <div class="hero-meta-item"><span class="hero-meta-label">Days</span><span class="hero-meta-value">5</span></div>
+      <div class="hero-meta-item"><span class="hero-meta-label">Return</span><span class="hero-meta-value">Tue 19 May</span></div>
+    </div>
+  </div>
+  <div class="scroll-hint"><span>Scroll</span><div class="scroll-arrow"></div></div>
+</section>
+
+<!-- STICKY NAV -->
+<nav class="day-nav" id="dayNav">
+  <div class="day-nav-item active" onclick="goDay('day1',this)">Day 1 · CDA</div>
+  <div class="day-nav-item" onclick="goDay('day2',this)">Day 2 · Missoula</div>
+  <div class="day-nav-item" onclick="goDay('day3',this)">Day 3 · Yellowstone</div>
+  <div class="day-nav-item" onclick="goDay('day4',this)">Day 4 · Lamar</div>
+  <div class="day-nav-item" onclick="goDay('day5',this)">Day 5 · Home</div>
+</nav>
+
+<!-- ═══ DAY 1 ═══ -->
+<section class="day-section" id="day1">
+  <div class="day-hero">
+    <div class="day-hero-bg"></div>
+    <div class="day-number-badge"><div class="day-num-box">1</div><span class="day-date-label">Friday, 15 May</span></div>
+    <h2 class="day-title">Vancouver → Coeur d'Alene, Idaho</h2>
+    <p class="day-narrative">Cross the border south through the Okanagan and into Idaho. Lake Coeur d'Alene is one of the most underrated towns in the Pacific Northwest — walk the lake trail, catch golden hour at Higgins Point, eat well.</p>
+    <span class="day-drive-badge">🚗 ~6.5 hrs driving</span>
+  </div>
+  <div class="map-container">
+    <div id="map1" class="leaflet-map"></div>
+    <a class="map-open-btn" href="https://www.google.com/maps/dir/Vancouver,BC/Coeur+d'Alene,ID" target="_blank">🗺️ Open in Maps</a>
+  </div>
+  <div class="stops-section">
+    <div class="stops-label">Today's Stops</div>
+    <div class="stop-cards">
+      <div class="stop-card"><div class="stop-icon">📸</div><div class="stop-body"><div class="stop-type viewpoint">Viewpoint</div><div class="stop-name">Higgins Point</div><div class="stop-location">N Idaho Centennial Trail, CDA</div><div class="stop-note">Panoramic views over Lake CDA. Easy 1-mile walk — perfect for golden hour on arrival.</div><div class="stop-tags"><span class="stop-tag">★ 4.7</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">📸</div><div class="stop-body"><div class="stop-type viewpoint">Viewpoint</div><div class="stop-name">Mineral Ridge Scenic Area</div><div class="stop-location">CDA Parkway, Idaho</div><div class="stop-note">Steeper 3-mile hike, elevated ridge views. Stunning payoff if you have the energy after the drive.</div><div class="stop-tags"><span class="stop-tag">★ 4.8</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">☕</div><div class="stop-body"><div class="stop-type coffee">Coffee</div><div class="stop-name">DOMA Coffee Roasting Co.</div><div class="stop-location">3091 N Atlas Rd, CDA</div><div class="stop-note">Open from 6am. Outdoor seating with lake views. Great stop on arrival or before leaving Saturday morning.</div><div class="stop-tags"><span class="stop-tag">Open 6am</span><span class="stop-tag">★ 4.8</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">🍽️</div><div class="stop-body"><div class="stop-type food">Dinner</div><div class="stop-name">Izzy's Comfort Kitchen</div><div class="stop-location">726 N 4th St, CDA</div><div class="stop-note">Southern comfort food — legendary cornbread, peach bourbon BBQ burger. Open Friday evenings.</div><div class="stop-tags"><span class="stop-tag hl">Book ahead</span><span class="stop-tag">★ 4.7</span></div></div></div>
+    </div>
+  </div>
+</section>
+<div class="day-divider"></div>
+
+<!-- ═══ DAY 2 ═══ -->
+<section class="day-section" id="day2">
+  <div class="day-hero">
+    <div class="day-hero-bg"></div>
+    <div class="day-number-badge"><div class="day-num-box">2</div><span class="day-date-label">Saturday, 16 May</span></div>
+    <h2 class="day-title">Coeur d'Alene → Missoula → West Yellowstone</h2>
+    <p class="day-narrative">A big drive day. Stop in Missoula — a brilliant university town with a great independent coffee scene and the Saturday farmers market. Push south into West Yellowstone, your base for two nights.</p>
+    <span class="day-drive-badge">🚗 ~7 hrs driving</span>
+  </div>
+  <div class="map-container">
+    <div id="map2" class="leaflet-map"></div>
+    <a class="map-open-btn" href="https://www.google.com/maps/dir/Coeur+d'Alene,ID/Missoula,MT/West+Yellowstone,MT" target="_blank">🗺️ Open in Maps</a>
+  </div>
+  <div class="stops-section">
+    <div class="stops-label">Today's Stops</div>
+    <div class="stop-cards">
+      <div class="stop-card"><div class="stop-icon">☕</div><div class="stop-body"><div class="stop-type coffee">Coffee · Missoula</div><div class="stop-name">Black Coffee Roasting Co.</div><div class="stop-location">525 E Spruce St, Missoula</div><div class="stop-note">Third-wave roaster in a reclaimed aircraft hangar. Missoula's best espresso. Open from 7am Saturdays.</div><div class="stop-tags"><span class="stop-tag">Open 7am Sat</span><span class="stop-tag">★ 4.6</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">🍳</div><div class="stop-body"><div class="stop-type food">Brunch · Missoula</div><div class="stop-name">The Old Post</div><div class="stop-location">103 W Spruce St, Missoula</div><div class="stop-note">Missoula institution. Biscuits & gravy, fish tacos, great cocktails. Live bluegrass on Saturdays. Open from 8am.</div><div class="stop-tags"><span class="stop-tag">★ 4.4</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">🦌</div><div class="stop-body"><div class="stop-type food">Dinner · West Yellowstone</div><div class="stop-name">Hank's Chop Shop</div><div class="stop-location">221 N Canyon St, West Yellowstone</div><div class="stop-note">First Montana game dinner. Elk sausage pasta, bison burger, truffle parmesan fries. Lively atmosphere.</div><div class="stop-tags"><span class="stop-tag">★ 4.5</span></div></div></div>
+    </div>
+  </div>
+</section>
+<div class="day-divider"></div>
+
+<!-- ═══ DAY 3 ═══ -->
+<section class="day-section" id="day3">
+  <div class="day-hero">
+    <div class="day-hero-bg"></div>
+    <div class="day-number-badge"><div class="day-num-box">3</div><span class="day-date-label">Sunday, 17 May</span></div>
+    <h2 class="day-title">Old Faithful · Grand Prismatic · The Canyon</h2>
+    <p class="day-narrative">Start early at Old Faithful. Work north through Grand Prismatic and the alien landscape of Norris Geyser Basin. Finish at Artist Point — one of the most photographed viewpoints in any US national park.</p>
+    <span class="day-drive-badge">🏞️ Full day in park · Stay: West Yellowstone</span>
+  </div>
+  <div class="map-container">
+    <div id="map3" class="leaflet-map"></div>
+    <a class="map-open-btn" href="https://www.google.com/maps/dir/West+Yellowstone,MT/44.4605,-110.8281/44.5250,-110.8382/44.7262,-110.7043/44.7211,-110.4790/West+Yellowstone,MT" target="_blank">🗺️ Open in Maps</a>
+  </div>
+  <div class="stops-section">
+    <div class="stops-label">Today's Stops</div>
+    <div class="stop-cards">
+      <div class="stop-card"><div class="stop-icon">🌋</div><div class="stop-body"><div class="stop-type activity">Geothermal</div><div class="stop-name">Old Faithful</div><div class="stop-location">Upper Geyser Basin, Yellowstone</div><div class="stop-note">Arrive before 9am. Check eruption times at the visitor centre — roughly every 90 mins. Walk the full Upper Geyser Basin boardwalk.</div><div class="stop-tags"><span class="stop-tag hl">Arrive early</span><span class="stop-tag">★ 4.7</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">🎨</div><div class="stop-body"><div class="stop-type viewpoint">Geothermal</div><div class="stop-name">Grand Prismatic Spring</div><div class="stop-location">Midway Geyser Basin, Yellowstone</div><div class="stop-note">Take the Fairy Falls trailhead for the overhead view (2.4mi). Best colours in morning light — the overlook is what makes this iconic.</div><div class="stop-tags"><span class="stop-tag hl">Do the overlook</span><span class="stop-tag">★ 4.9</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">💨</div><div class="stop-body"><div class="stop-type activity">Geothermal</div><div class="stop-name">Norris Geyser Basin</div><div class="stop-location">Norris, Yellowstone</div><div class="stop-note">World's hottest geyser basin — home of Steamboat, the tallest active geyser on earth. Most people skip this. Don't.</div><div class="stop-tags"><span class="stop-tag hl">Don't skip</span><span class="stop-tag">★ 4.8</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">🏔️</div><div class="stop-body"><div class="stop-type viewpoint">Viewpoint</div><div class="stop-name">Artist Point + Lookout Point</div><div class="stop-location">South Rim Drive, Yellowstone</div><div class="stop-note">The postcard view of Yellowstone — Grand Canyon + Lower Falls. Do both, they're a short walk apart with different angles.</div><div class="stop-tags"><span class="stop-tag">★ 4.9</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">🦬</div><div class="stop-body"><div class="stop-type food">Dinner · West Yellowstone</div><div class="stop-name">The Buffalo Bar</div><div class="stop-location">335 US-20, West Yellowstone</div><div class="stop-note">Classic Montana bar & grill. Garlic mushroom bison burger. Lively and unpretentious after a long park day.</div><div class="stop-tags"><span class="stop-tag">★ 4.5</span></div></div></div>
+    </div>
+  </div>
+</section>
+<div class="day-divider"></div>
+
+<!-- ═══ DAY 4 ═══ -->
+<section class="day-section" id="day4">
+  <div class="day-hero">
+    <div class="day-hero-bg"></div>
+    <div class="day-number-badge"><div class="day-num-box">4</div><span class="day-date-label">Monday, 18 May</span></div>
+    <h2 class="day-title">Lamar Valley Wildlife + Move to Gardiner</h2>
+    <p class="day-narrative">Drive the Grand Loop north for wildlife in Lamar Valley — the best in the entire park. Bison, wolves, and bears all commonly spotted. En route to Gardiner, stop at the otherworldly Mammoth Hot Springs terraces.</p>
+    <span class="day-drive-badge">🏞️ Full day in park · Move to Gardiner</span>
+  </div>
+  <div class="map-container">
+    <div id="map4" class="leaflet-map"></div>
+    <a class="map-open-btn" href="https://www.google.com/maps/dir/West+Yellowstone,MT/44.9134,-110.3308/44.9706,-110.7034/Gardiner,MT" target="_blank">🗺️ Open in Maps</a>
+  </div>
+  <div class="stops-section">
+    <div class="stops-label">Today's Stops</div>
+    <div class="stop-cards">
+      <div class="stop-card"><div class="stop-icon">🦬</div><div class="stop-body"><div class="stop-type activity">Wildlife</div><div class="stop-name">Lamar Valley</div><div class="stop-location">Northeast Yellowstone</div><div class="stop-note">Best wildlife watching in the park. Peak activity dawn and dusk. Bison herds come right up to the road. Go slow, use the pullouts.</div><div class="stop-tags"><span class="stop-tag hl">Bring binoculars</span><span class="stop-tag">★ 4.8</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">♨️</div><div class="stop-body"><div class="stop-type viewpoint">Geothermal</div><div class="stop-name">Mammoth Hot Springs</div><div class="stop-location">Mammoth, Yellowstone</div><div class="stop-note">Travertine terraces unlike anything else in the park — often compared to Pamukkale, Turkey. En route to Gardiner, easy build-in.</div><div class="stop-tags"><span class="stop-tag">★ 4.7</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">🍜</div><div class="stop-body"><div class="stop-type food">Dinner · Gardiner</div><div class="stop-name">The Good Food Place</div><div class="stop-location">375 US Hwy 89 S, Gardiner</div><div class="stop-note">4.9-star hidden gem — tiny roadside shack near the north entrance. Hawaiian-inspired stir fry and steak bowls. Open Mon from 4pm.</div><div class="stop-tags"><span class="stop-tag hl">Hidden gem</span><span class="stop-tag">★ 4.9</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">☕</div><div class="stop-body"><div class="stop-type coffee">Coffee & Food · Gardiner</div><div class="stop-name">Wonderland Cafe & Lodge</div><div class="stop-location">206 Main St, Gardiner</div><div class="stop-note">Great espresso and bison steak. Also perfect for breakfast Day 5 before the long drive home. Open from 8am.</div><div class="stop-tags"><span class="stop-tag">★ 4.4</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">🏨</div><div class="stop-body"><div class="stop-type stay">Stay</div><div class="stop-name">Yellowstone Gateway Inn</div><div class="stop-location">103 Bigelow Ln, Gardiner</div><div class="stop-note">Highly rated lodge right at the north entrance. Elk roam the grounds. Full kitchen, spacious rooms, contactless check-in.</div><div class="stop-tags"><span class="stop-tag hl">Book ahead</span><span class="stop-tag">★ 4.8</span></div></div></div>
+    </div>
+  </div>
+</section>
+<div class="day-divider"></div>
+
+<!-- ═══ DAY 5 ═══ -->
+<section class="day-section" id="day5">
+  <div class="day-hero">
+    <div class="day-hero-bg"></div>
+    <div class="day-number-badge"><div class="day-num-box">5</div><span class="day-date-label">Tuesday, 19 May</span></div>
+    <h2 class="day-title">Gardiner → Kalispell → Kootenay Ferry → Vancouver</h2>
+    <p class="day-narrative">The long haul home, made much better with four smart stops. A sweeping pullout on Flathead Lake, world-class coffee and Montana BBQ in Kalispell, and the Kootenay Lake free ferry for a beautiful end to the trip.</p>
+    <span class="day-drive-badge">🚗 ~10–11 hrs driving</span>
+  </div>
+  <div class="map-container">
+    <div id="map5" class="leaflet-map"></div>
+    <a class="map-open-btn" href="https://www.google.com/maps/dir/Gardiner,MT/Polson,MT/Kalispell,MT/Balfour,BC/Vancouver,BC" target="_blank">🗺️ Open in Maps</a>
+  </div>
+  <div class="stops-section">
+    <div class="stops-label">Today's Stops</div>
+    <div class="stop-cards">
+      <div class="stop-card"><div class="stop-icon">💧</div><div class="stop-body"><div class="stop-type viewpoint">Viewpoint</div><div class="stop-name">Flathead Lake Overlook</div><div class="stop-location">North of Polson, Montana</div><div class="stop-note">Pull over as you skirt the east side. Largest natural freshwater lake west of the Mississippi. Two minutes out of the car — stunning.</div><div class="stop-tags"><span class="stop-tag">★ 4.7</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">☕</div><div class="stop-body"><div class="stop-type coffee">Coffee · Kalispell</div><div class="stop-name">The Bird & Billy</div><div class="stop-location">149 Main St, Kalispell</div><div class="stop-note">Family-run, single-origin roasts, homemade syrups and baked goods. One reviewer drove back to Kalispell just for this coffee. Open from 7am Tuesdays.</div><div class="stop-tags"><span class="stop-tag">Open 7am Tue</span><span class="stop-tag">★ 4.9</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">🥩</div><div class="stop-body"><div class="stop-type food">Lunch · Kalispell</div><div class="stop-name">The Desoto Grill</div><div class="stop-location">227 1st St W, Kalispell</div><div class="stop-note">Montana BBQ — fall-apart brisket, loaded nachos, cornbread described as "like candy". Open Tuesday from 11am.</div><div class="stop-tags"><span class="stop-tag">Open Tue 11am</span><span class="stop-tag">★ 4.7</span></div></div></div>
+      <div class="stop-card"><div class="stop-icon">⛴️</div><div class="stop-body"><div class="stop-type transport">Ferry · BC</div><div class="stop-name">Kootenay Lake Ferry</div><div class="stop-location">Balfour → Kootenay Bay, BC</div><div class="stop-note">Free. 35 minutes. Often called the world's longest free ferry ride. Mountain and lake views the whole crossing. Snack bar on board.</div><div class="stop-tags"><span class="stop-tag hl">Free · Check schedule</span><span class="stop-tag">★ 4.6</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- LINKS -->
+<div class="links-section">
+  <span class="links-eyebrow">Navigate</span>
+  <h2 class="links-title">Plan & Navigate</h2>
+  <p class="links-sub">Save the full route before you leave — cell service in Yellowstone is minimal. Download offline maps too.</p>
+  <div class="link-btns">
+    <a class="link-btn primary" href="https://www.google.com/maps/dir/Vancouver,BC/Coeur+d'Alene,ID/Missoula,MT/West+Yellowstone,MT/Gardiner,MT/Kalispell,MT/Vancouver,BC" target="_blank">🗺️ Full Route · Google Maps</a>
+    <a class="link-btn secondary" href="https://www.nps.gov/yell/planyourvisit/hours.htm" target="_blank">🏔️ Yellowstone NPS</a>
+    <a class="link-btn secondary" href="https://www2.gov.bc.ca/gov/content/transportation/passenger-travel/water-travel/inland-ferries/kootenay-lake-ferry/kootenay-lake-ferry-schedule" target="_blank">⛴️ Ferry Schedule</a>
+  </div>
+</div>
+
+<!-- TIPS -->
+<div class="tips-section">
+  <div class="tips-header"><span class="tips-eyebrow">Good to Know</span><h2 class="tips-title">Before You Leave</h2></div>
+  <div class="tip-card"><div class="tip-icon">🎫</div><div class="tip-body"><h4>Yellowstone Entry</h4><p>Book your entry pass at recreation.gov. Timed entry reservations are sometimes required. A 7-day vehicle pass is ~$35 USD.</p></div></div>
+  <div class="tip-card"><div class="tip-icon">🌡️</div><div class="tip-body"><h4>Mid-May Weather</h4><p>Shoulder season — fewer crowds but cold nights (can dip near freezing). Layers essential. Snow possible at elevation.</p></div></div>
+  <div class="tip-card"><div class="tip-icon">🦬</div><div class="tip-body"><h4>Wildlife Safety</h4><p>Stay 25 yards from bison and elk, 100 yards from bears and wolves. Use pullouts and binoculars — animals come to you in Lamar Valley.</p></div></div>
+  <div class="tip-card"><div class="tip-icon">🛂</div><div class="tip-body"><h4>Border Crossing</h4><p>Have passports ready. Check wait times at Peace Arch / Pacific Highway. NEXUS cards will speed things up both ways.</p></div></div>
+  <div class="tip-card"><div class="tip-icon">⛽</div><div class="tip-body"><h4>Fuel & Cell Service</h4><p>Fill up when you can — long gaps between stations in Montana. Download offline maps in Google Maps before entering Yellowstone.</p></div></div>
+  <div class="tip-card"><div class="tip-icon">🌅</div><div class="tip-body"><h4>Early Mornings Win</h4><p>Arrive at major sites before 9am. Old Faithful, Grand Prismatic, and Artist Point all get significantly more crowded by mid-morning.</p></div></div>
+</div>
+
+<footer>
+  <div class="footer-title">Ryan & Niamh · May 2026</div>
+  <div class="footer-sub">Vancouver → Yellowstone · 5 Days · ~2,000 Miles</div>
+</footer>
+
+<script>
+// ── Tile layer (dark OSM via CartoDB) ──
+const TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const ATTR  = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
+
+// ── Custom marker ──
+function marker(color) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:12px;height:12px;background:${color};border:2px solid #FAF7F2;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.6)"></div>`,
+    iconSize: [12,12], iconAnchor: [6,6]
+  });
+}
+function startMarker() {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:14px;height:14px;background:#C4872A;border:2px solid #FAF7F2;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.7)"></div>`,
+    iconSize: [14,14], iconAnchor: [7,7]
+  });
+}
+
+function makeMap(id, view, zoom, stops, lineColor) {
+  const map = L.map(id, { zoomControl: true, scrollWheelZoom: false, attributionControl: true })
+               .setView(view, zoom);
+  L.tileLayer(TILES, { attribution: ATTR, maxZoom: 19, subdomains: 'abcd' }).addTo(map);
+
+  const latlngs = stops.map(s => s.ll);
+  L.polyline(latlngs, { color: lineColor || '#C4872A', weight: 3, opacity: 0.8, dashArray: '6 4' }).addTo(map);
+
+  stops.forEach((s, i) => {
+    const m = i === 0 ? startMarker() : marker(s.color || '#C4872A');
+    L.marker(s.ll, { icon: m })
+     .addTo(map)
+     .bindPopup(`<b>${s.name}</b>${s.note ? '<br>' + s.note : ''}`);
+  });
+  return map;
+}
+
+// ── DAY 1: Vancouver → Coeur d'Alene ──
+makeMap('map1', [48.0, -116.5], 6, [
+  { ll: [49.2827, -123.1207], name: 'Vancouver, BC', color: '#5C7A5E' },
+  { ll: [49.0, -119.5],       name: 'Okanagan Valley', note: 'Scenic drive through wine country', color: '#8C8070' },
+  { ll: [47.6795, -116.7808], name: "Izzy's Comfort Kitchen", note: 'Dinner — legendary cornbread', color: '#A94B2B' },
+  { ll: [47.6269, -116.6807], name: 'Higgins Point', note: 'Panoramic lake views', color: '#5C7A5E' },
+  { ll: [47.6987, -116.8278], name: 'DOMA Coffee', note: 'Morning coffee with lake views', color: '#C4872A' },
+]);
+
+// ── DAY 2: CDA → Missoula → West Yellowstone ──
+makeMap('map2', [46.5, -112.5], 6, [
+  { ll: [47.6769, -116.7805], name: "Coeur d'Alene, ID", color: '#5C7A5E' },
+  { ll: [46.8718, -113.9864], name: 'Black Coffee Roasting Co.', note: 'Best coffee in Missoula', color: '#C4872A' },
+  { ll: [46.8741, -113.9935], name: 'The Old Post', note: 'Brunch — biscuits & gravy, bluegrass', color: '#A94B2B' },
+  { ll: [44.6621, -111.1041], name: "West Yellowstone, MT", note: "Hank's Chop Shop for dinner", color: '#5C7A5E' },
+]);
+
+// ── DAY 3: Yellowstone loop ──
+makeMap('map3', [44.65, -110.7], 8, [
+  { ll: [44.6621, -111.1041], name: 'West Yellowstone', color: '#5C7A5E' },
+  { ll: [44.4605, -110.8281], name: 'Old Faithful', note: 'Arrive before 9am', color: '#C4872A' },
+  { ll: [44.5250, -110.8382], name: 'Grand Prismatic Spring', note: 'Do the Fairy Falls overlook', color: '#C4872A' },
+  { ll: [44.7262, -110.7043], name: 'Norris Geyser Basin', note: "World's hottest — don't skip", color: '#C4872A' },
+  { ll: [44.7211, -110.4790], name: 'Artist Point', note: 'The postcard view of Yellowstone', color: '#C4872A' },
+  { ll: [44.7209, -110.4886], name: 'Lookout Point', note: 'Different angle on the Lower Falls', color: '#8C8070' },
+  { ll: [44.6621, -111.1041], name: 'West Yellowstone', note: 'The Buffalo Bar for dinner', color: '#5C7A5E' },
+]);
+
+// ── DAY 4: Lamar Valley → Gardiner ──
+makeMap('map4', [44.85, -110.6], 8, [
+  { ll: [44.6621, -111.1041], name: 'West Yellowstone', color: '#5C7A5E' },
+  { ll: [44.9134, -110.3308], name: 'Lamar Valley', note: 'Best wildlife watching in the park', color: '#C4872A' },
+  { ll: [44.9706, -110.7034], name: 'Mammoth Hot Springs', note: 'Travertine terraces — unmissable', color: '#C4872A' },
+  { ll: [45.0306, -110.7059], name: 'Wonderland Cafe', note: 'Coffee and dinner in Gardiner', color: '#C4872A' },
+  { ll: [45.0358, -110.7115], name: 'Yellowstone Gateway Inn', note: 'Stay — elk roam the property', color: '#5C7A5E' },
+]);
+
+// ── DAY 5: Gardiner → Vancouver ──
+makeMap('map5', [48.5, -114.5], 6, [
+  { ll: [45.0302, -110.7059], name: 'Gardiner, MT', color: '#5C7A5E' },
+  { ll: [47.6709, -114.1059], name: 'Flathead Lake Overlook', note: 'Largest freshwater lake west of Mississippi', color: '#C4872A' },
+  { ll: [48.1970, -114.3130], name: 'The Bird & Billy', note: 'Best coffee in Kalispell — ★ 4.9', color: '#C4872A' },
+  { ll: [48.1973, -114.3174], name: 'The Desoto Grill', note: 'Montana BBQ — open Tue 11am', color: '#A94B2B' },
+  { ll: [49.6245, -116.9594], name: 'Kootenay Lake Ferry (Balfour)', note: "Free · 35 min · World's longest free ferry", color: '#C4872A' },
+  { ll: [49.2827, -123.1207], name: 'Vancouver, BC — Home', color: '#5C7A5E' },
+]);
+
+// ── Nav scroll behaviour ──
+function goDay(id, el) {
+  document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+  document.querySelectorAll('.day-nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+const ids = ['day1','day2','day3','day4','day5'];
+const navItems = document.querySelectorAll('.day-nav-item');
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const i = ids.indexOf(e.target.id);
+      if (i > -1) {
+        navItems.forEach(n => n.classList.remove('active'));
+        navItems[i].classList.add('active');
+        navItems[i].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  });
+}, { threshold: 0.25 });
+ids.forEach(id => { const el = document.getElementById(id); if (el) obs.observe(el); });
+</script>
+</body>
+</html>
